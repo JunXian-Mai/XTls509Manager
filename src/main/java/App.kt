@@ -1,22 +1,21 @@
+import App.Companion.gmCaPath
+import App.Companion.gmClientKeyPath
+import cn.gmssl.jce.provider.GMJCE
+import cn.gmssl.jsse.provider.GMJSSE
 import com.sun.org.apache.xml.internal.security.utils.Base64
+import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.eclipse.paho.client.mqttv3.*
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 import java.io.BufferedReader
 import java.io.FileInputStream
 import java.io.InputStreamReader
-import java.security.KeyFactory
-import java.security.KeyStore
-import java.security.PrivateKey
-import java.security.SecureRandom
+import java.security.*
 import java.security.cert.Certificate
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
 import java.security.interfaces.RSAPrivateKey
 import java.security.spec.PKCS8EncodedKeySpec
-import javax.net.ssl.KeyManagerFactory
-import javax.net.ssl.SSLContext
-import javax.net.ssl.SSLSocketFactory
-import javax.net.ssl.TrustManagerFactory
+import javax.net.ssl.*
 
 
 class App {
@@ -26,6 +25,10 @@ class App {
     val caPath = "/Users/maijunxian/IdeaProjects/Paho Java/certs/openssl/rootCA.pem"
     val clientPath = "/Users/maijunxian/IdeaProjects/Paho Java/certs/openssl/client.pem"
     val clientKeyPath = "/Users/maijunxian/IdeaProjects/Paho Java/certs/openssl/client-key.pem"
+
+    val gmCaPath = "/Users/maijunxian/IdeaProjects/Paho Java/certs/gmssl/rootCA.pem"
+    val gmClientPath = "/Users/maijunxian/IdeaProjects/Paho Java/certs/gmssl/client.pem"
+    val gmClientKeyPath = "/Users/maijunxian/IdeaProjects/Paho Java/certs/gmssl/client-key.pem"
 
     fun getSSLSocketFactory(mutual: Boolean = false): SSLSocketFactory {
       val caFactory = CertificateFactory.getInstance("X.509")
@@ -80,7 +83,7 @@ class App {
       val pubTopic = "testtopic/1"
       val content = "Hello World"
       val qos = 2
-      val broker = "ssl://127.0.0.1:8883"
+      val broker = "ssl://localhost:8883"
       val clientId = "java_emqx_test"
       val persistence = MemoryPersistence()
 
@@ -93,7 +96,7 @@ class App {
         connOpts.password = "java_emqx_test".toCharArray()
         //会话保留
         connOpts.isCleanSession = true
-        connOpts.socketFactory = getSSLSocketFactory(true)
+        connOpts.socketFactory = getSSLSocketFactory()
 
         //设置回调
         client.setCallback(pushCallBack)
@@ -148,4 +151,60 @@ class App {
       println("deliveryComplete---------${token.isComplete}")
     }
   }
+}
+
+fun getGMSSLSocketFactory(mutual: Boolean = false): SSLSocketFactory {
+  val protocol = GMJSSE.GMSSLv11
+  val provider = GMJSSE.NAME
+  Security.insertProviderAt(GMJCE(), 1)
+  Security.insertProviderAt(GMJSSE(), 2)
+
+  Security.addProvider(BouncyCastleProvider())
+  val tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm())
+
+  val caIns = FileInputStream(gmCaPath)
+  val cf = CertificateFactory.getInstance("X.509", "BC")
+  val ca = cf.generateCertificate(caIns) as X509Certificate
+  val caKeyStore = KeyStore.getInstance(KeyStore.getDefaultType())
+  caKeyStore.load(null, null);
+  caKeyStore.setCertificateEntry("ca-certificate", ca);
+  tmf.init(caKeyStore)
+
+  val trusts = arrayOf(TrustAllManager())
+  val context = SSLContext.getInstance(protocol, provider)
+  context.init(null, trusts, SecureRandom())
+
+  return context.socketFactory
+}
+
+fun getGMPrivateKey(): PrivateKey {
+  val keyIns = FileInputStream(gmClientKeyPath)
+  val br = BufferedReader(InputStreamReader(keyIns))
+  val builder = StringBuilder()
+  br.useLines {
+    it.forEach { line ->
+      if (line[0] != '-') {
+        builder.append(line)
+        builder.append('\r')
+      }
+    }
+  }
+  val buffer = Base64.decode(builder.toString())
+  val keySpec = PKCS8EncodedKeySpec(buffer)
+  val keyFactory = KeyFactory.getInstance("RSA")
+  return keyFactory.generatePrivate(keySpec) as RSAPrivateKey
+}
+
+class TrustAllManager(cert: X509Certificate? = null) : X509TrustManager {
+  private val issuers: Array<X509Certificate> = if (cert == null) {
+    arrayOf()
+  } else {
+    arrayOf(cert)
+  }
+
+  override fun getAcceptedIssuers(): Array<X509Certificate> {
+    return issuers
+  }
+  override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String?) {}
+  override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String?) {}
 }
