@@ -1,5 +1,9 @@
-import App.Companion.gmCaPath
-import App.Companion.gmClientKeyPath
+package app
+
+import app.EmqxApp.Companion.gmCaPath
+import app.EmqxApp.Companion.gmClientKeyPath
+import bj.anydef.tls.cert.etc.AnydefX509ManagerEtc
+import bj.anydef.tls.cert.manager.AnydefX509TrustManager
 import cn.gmssl.jce.provider.GMJCE
 import cn.gmssl.jsse.provider.GMJSSE
 import com.sun.org.apache.xml.internal.security.utils.Base64
@@ -18,63 +22,25 @@ import java.security.spec.PKCS8EncodedKeySpec
 import javax.net.ssl.*
 
 
-class App {
+class EmqxApp {
 
   companion object {
     val pushCallBack = PushCallBack()
-    val caPath = "/Users/maijunxian/IdeaProjects/Paho Java/certs/openssl/rootCA.pem"
-    val clientPath = "/Users/maijunxian/IdeaProjects/Paho Java/certs/openssl/client.pem"
-    val clientKeyPath = "/Users/maijunxian/IdeaProjects/Paho Java/certs/openssl/client-key.pem"
 
-    val gmCaPath = "/Users/maijunxian/IdeaProjects/Paho Java/certs/gmssl/rootCA.pem"
-    val gmClientPath = "/Users/maijunxian/IdeaProjects/Paho Java/certs/gmssl/client.pem"
-    val gmClientKeyPath = "/Users/maijunxian/IdeaProjects/Paho Java/certs/gmssl/client-key.pem"
+    val gmCaPath = "/Users/maijunxian/IdeaProjects/Paho_Java/certs/gmssl/rootCA.pem"
+    val gmClientPath = "/Users/maijunxian/IdeaProjects/Paho_Java/certs/gmssl/client.pem"
+    val gmClientKeyPath = "/Users/maijunxian/IdeaProjects/Paho_Java/certs/gmssl/client-key.pem"
 
     fun getSSLSocketFactory(mutual: Boolean = false): SSLSocketFactory {
-      val caFactory = CertificateFactory.getInstance("X.509")
-      val tmf = TrustManagerFactory.getInstance("PKIX")
-      val kmf = KeyManagerFactory.getInstance("PKIX")
-
-      val caIns = FileInputStream(caPath)
-      val ca: X509Certificate = caFactory.generateCertificate(caIns) as X509Certificate
-      val caKeyStore = KeyStore.getInstance("JKS")
-
-      caKeyStore.load(null, null)
-      caKeyStore.setCertificateEntry("ca-certificate", ca)
-
-      tmf.init(caKeyStore)
-
+      val trustManager = AnydefX509TrustManager()
+      var keyManager: KeyManagerFactory? = null
       if (mutual) {
-        val clientCertIns = FileInputStream(clientPath)
-        val clientCert: X509Certificate = caFactory.generateCertificate(clientCertIns) as X509Certificate
-        val clientKeyStore = KeyStore.getInstance("JKS")
-        clientKeyStore.load(null, null)
-        clientKeyStore.setCertificateEntry("certificate", clientCert)
-        clientKeyStore.setKeyEntry("private-key", getPrivateKey(), "".toCharArray(), arrayOf<Certificate>(clientCert))
-        kmf.init(clientKeyStore, "".toCharArray())
+        keyManager = AnydefX509ManagerEtc.getKeyManagerFactory()
       }
 
       val context = SSLContext.getInstance("TLSv1.2")
-      context.init(if (mutual) kmf.keyManagers else null, tmf.trustManagers, SecureRandom())
+      context.init(if (mutual) keyManager?.keyManagers else null, arrayOf(trustManager), SecureRandom())
       return context.socketFactory
-    }
-
-    fun getPrivateKey(): PrivateKey {
-      val keyIns = FileInputStream(clientKeyPath)
-      val br = BufferedReader(InputStreamReader(keyIns))
-      val builder = StringBuilder()
-      br.useLines {
-        it.forEach { line ->
-          if (line[0] != '-') {
-            builder.append(line)
-            builder.append('\r')
-          }
-        }
-      }
-      val buffer = Base64.decode(builder.toString())
-      val keySpec = PKCS8EncodedKeySpec(buffer)
-      val keyFactory = KeyFactory.getInstance("RSA")
-      return keyFactory.generatePrivate(keySpec) as RSAPrivateKey
     }
 
     @JvmStatic
@@ -96,7 +62,7 @@ class App {
         connOpts.password = "java_emqx_test".toCharArray()
         //会话保留
         connOpts.isCleanSession = true
-        connOpts.socketFactory = getSSLSocketFactory()
+        connOpts.socketFactory = getSSLSocketFactory(true)
 
         //设置回调
         client.setCallback(pushCallBack)

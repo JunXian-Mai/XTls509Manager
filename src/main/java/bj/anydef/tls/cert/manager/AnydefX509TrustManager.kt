@@ -1,27 +1,32 @@
+package bj.anydef.tls.cert.manager
+
+import bj.anydef.tls.cert.etc.AnydefX509ManagerEtc
+import bj.anydef.tls.cert.manager.reflect.ReflectSunProtocolVersion
+import bj.anydef.tls.cert.manager.reflect.ReflectSunSSLAlgorithmConstraints
+import bj.anydef.tls.cert.manager.reflect.ReflectSunTrustStoreManager
+import printlog
 import sun.security.ssl.ProtocolVersion
 import sun.security.util.HostnameChecker
 import sun.security.validator.Validator
-import java.io.FileInputStream
 import java.net.Socket
 import java.security.AlgorithmConstraints
 import java.security.cert.CertificateException
-import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
 import javax.net.ssl.*
 
 class AnydefX509TrustManager(
   private val validatorType: String = Validator.TYPE_PKIX,
-  trustedCerts: Array<X509Certificate> = AnydefX509Manager.getCaCertificates(),
+  private val trustedSelfCerts: Array<X509Certificate> = AnydefX509ManagerEtc.getCaCertificates(),
   attachSystemCerts: Boolean = true
 ) : X509ExtendedTrustManager() {
+
+  private val trustStoreManager = ReflectSunTrustStoreManager()
 
   private val protocol = ReflectSunProtocolVersion()
 
   private val sslAlgorithmConstraints = ReflectSunSSLAlgorithmConstraints()
 
   private val trustedCerts: Array<X509Certificate>
-
-  private val isPrintLog = false
 
   @Volatile
   private var clientValidator: Validator? = null
@@ -30,18 +35,14 @@ class AnydefX509TrustManager(
   private var serverValidator: Validator? = null
 
   init {
-    AnydefX509Manager.sAttachSystemCert = attachSystemCerts
-    if (AnydefX509Manager.sAttachSystemCert) {
-      val trustStoreManagerClazz = Class.forName("sun.security.ssl.TrustStoreManager")
-      val getTrustedCerts = trustStoreManagerClazz.getDeclaredMethod("getTrustedCerts")
-      getTrustedCerts.isAccessible = true
-      val certs: Set<X509Certificate> = getTrustedCerts.invoke(null) as Set<X509Certificate>
-      this.trustedCerts = certs.toTypedArray().plus(trustedCerts)
+    AnydefX509ManagerEtc.sAttachSystemCert = attachSystemCerts
+    if (AnydefX509ManagerEtc.sAttachSystemCert) {
+      this.trustedCerts = trustStoreManager.getTrustedCerts().plus(trustedSelfCerts)
     } else {
-      this.trustedCerts = trustedCerts
+      this.trustedCerts = trustedSelfCerts
     }
 
-    if (AnydefX509Manager.sPrintLnCerts) {
+    if (AnydefX509ManagerEtc.sPrintLnCerts) {
       showTrustedCerts()
     }
   }
@@ -72,6 +73,10 @@ class AnydefX509TrustManager(
 
   override fun getAcceptedIssuers(): Array<X509Certificate> {
     return trustedCerts
+  }
+
+  fun getAcceptedSelfIssuers(): Array<X509Certificate> {
+    return trustedSelfCerts
   }
 
   private fun checkTrustedInit(chain: Array<out X509Certificate>?,
@@ -286,7 +291,7 @@ class AnydefX509TrustManager(
   }
 
   private fun showTrustedCerts() {
-    if (isPrintLog) {
+    if (AnydefX509ManagerEtc.sPrintLnCerts) {
       for (cert in trustedCerts) {
         printlog("""
           adding as trusted cert:
@@ -301,116 +306,10 @@ class AnydefX509TrustManager(
   }
 
   private fun showTrustedRootCerts(rootCert: X509Certificate) {
-    if (isPrintLog) {
+    if (AnydefX509ManagerEtc.sPrintLnCerts) {
       printlog("""
-        Found trusted certificate: ${rootCert}
+        Found trusted certificate: $rootCert
       """.trimIndent())
-    }
-  }
-
-  object AnydefX509Manager {
-    private val caFactory = CertificateFactory.getInstance("X.509")
-
-    private val caCertPaths = arrayOf(
-      "/Users/maijunxian/IdeaProjects/Paho Java/certs/openssl/rootCA.pem",
-    )
-
-    private val serverCertPaths = arrayOf(
-      "/Users/maijunxian/IdeaProjects/Paho Java/certs/openssl/server.pem"
-    )
-
-    private val clientCertPaths = arrayOf(
-      "/Users/maijunxian/IdeaProjects/Paho Java/certs/openssl/client.pem"
-    )
-
-    enum class Type {
-      CA_TYPE,
-      CLIENT_TYPE,
-      SERVER_TYPE
-    }
-
-    var sAttachSystemCert = true
-
-    var sPrintLnCerts = true
-
-    fun getCaCertificates(): Array<X509Certificate> {
-      return getCertificates(Type.CA_TYPE)
-    }
-
-    fun getClientCertificates(): Array<X509Certificate> {
-      return getCertificates(Type.CLIENT_TYPE)
-    }
-
-    fun getServerCertificates(): Array<X509Certificate> {
-      return getCertificates(Type.SERVER_TYPE)
-    }
-
-    private fun getCertificates(type: Type): Array<X509Certificate> {
-      return when (type) {
-        Type.CA_TYPE -> caCertPaths
-        Type.CLIENT_TYPE -> clientCertPaths
-        Type.SERVER_TYPE -> serverCertPaths
-      }.map {
-        val caIns = FileInputStream(it)
-        caFactory.generateCertificate(caIns) as X509Certificate
-      }.toTypedArray()
-    }
-  }
-
-
-  private class ReflectSunProtocolVersion {
-    fun valueOf(name: String): ProtocolVersion {
-      val clazz = Class.forName("sun.security.ssl.ProtocolVersion")
-      val method = clazz.getDeclaredMethod("valueOf", String::class.java)
-      method.isAccessible = true
-      return method.invoke(null, name) as ProtocolVersion
-    }
-
-    fun getProtocolVersionInStatic(propertyName: String): ProtocolVersion {
-      val clazz = Class.forName("sun.security.ssl.ProtocolVersion")
-      val field = clazz.getDeclaredField(propertyName)
-      field.isAccessible = true
-      return field.get(null) as ProtocolVersion
-    }
-  }
-
-  private class ReflectSunSSLAlgorithmConstraints {
-    fun newInstance(
-      socket: SSLSocket,
-      supportedAlgorithms: Array<String>? = null,
-      withDefaultCertPathConstraints: Boolean): AlgorithmConstraints {
-
-      val clazz = Class.forName("sun.security.ssl.SSLAlgorithmConstraints")
-      val constructor = if (supportedAlgorithms != null) {
-        clazz.getDeclaredConstructor(SSLSocket::class.java, Array<String>::class.java, Boolean::class.java)
-      } else {
-        clazz.getDeclaredConstructor(SSLSocket::class.java, Boolean::class.java)
-      }
-      constructor.isAccessible = true
-      return if (supportedAlgorithms != null) {
-        constructor.newInstance(socket, supportedAlgorithms, withDefaultCertPathConstraints) as AlgorithmConstraints
-      } else {
-        constructor.newInstance(socket, withDefaultCertPathConstraints) as AlgorithmConstraints
-      }
-    }
-
-    fun newInstance(
-      engine: SSLEngine,
-      supportedAlgorithms: Array<String>? = null,
-      withDefaultCertPathConstraints: Boolean): AlgorithmConstraints {
-
-      val clazz = Class.forName("sun.security.ssl.SSLAlgorithmConstraints")
-      val constructor = if (supportedAlgorithms != null) {
-        clazz.getDeclaredConstructor(SSLEngine::class.java, Array<String>::class.java, Boolean::class.java)
-      } else {
-        clazz.getDeclaredConstructor(SSLEngine::class.java, Boolean::class.java)
-      }
-      constructor.isAccessible = true
-      return if (supportedAlgorithms != null) {
-        constructor.newInstance(engine, supportedAlgorithms, withDefaultCertPathConstraints) as AlgorithmConstraints
-      } else {
-        constructor.newInstance(engine, withDefaultCertPathConstraints) as AlgorithmConstraints
-      }
     }
   }
 }
