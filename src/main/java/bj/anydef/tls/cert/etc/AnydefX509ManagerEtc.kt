@@ -82,7 +82,7 @@ object AnydefX509ManagerEtc {
     return KeyManagerFactory.getInstance("PKIX").apply {
       val clientCertIns = FileInputStream(keyCertPathPair.second)
       val clientCert: X509Certificate = caFactory.generateCertificate(clientCertIns) as X509Certificate
-      val clientKeyStore = KeyStore.getInstance("JKS")
+      val clientKeyStore = KeyStore.getInstance(KeyStore.getDefaultType())
       clientKeyStore.load(null, null)
       clientKeyStore.setCertificateEntry("certificate", clientCert)
       clientKeyStore.setKeyEntry("private-key", getCertPrivateKey(keyCertPathPair.first), password.toCharArray(), arrayOf<Certificate>(clientCert))

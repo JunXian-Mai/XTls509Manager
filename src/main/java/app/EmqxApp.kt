@@ -62,7 +62,7 @@ class EmqxApp {
         connOpts.password = "java_emqx_test".toCharArray()
         //会话保留
         connOpts.isCleanSession = true
-        connOpts.socketFactory = getSSLSocketFactory()
+        connOpts.socketFactory = getSSLSocketFactory(true)
 
         //设置回调
         client.setCallback(pushCallBack)
