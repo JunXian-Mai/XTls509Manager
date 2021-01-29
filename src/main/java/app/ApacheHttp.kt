@@ -36,7 +36,7 @@ class ApacheHttp {
 
     @JvmStatic
     fun main(args: Array<String>) {
-      emqxTLSLink()
+      doGet()
     }
   }
 }

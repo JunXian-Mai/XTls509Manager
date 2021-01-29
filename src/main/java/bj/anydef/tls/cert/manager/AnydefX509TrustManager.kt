@@ -194,8 +194,8 @@ class AnydefX509TrustManager(
     showTrustedRootCerts(trustedChain[trustedChain.size - 1])
   }
 
-  private fun getValidator(variant: String): Validator =
-    Validator.getInstance(validatorType, variant, trustedCerts.toMutableSet())
+  private fun getValidator(variant: String, trustedCerts: Set<X509Certificate> = this.trustedCerts.toMutableSet()): Validator =
+    Validator.getInstance(validatorType, variant, trustedCerts)
 
   @Throws(CertificateException::class)
   private fun validate(v: Validator,

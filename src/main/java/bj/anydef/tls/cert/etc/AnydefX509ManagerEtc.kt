@@ -12,7 +12,10 @@ import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
 import java.security.interfaces.RSAPrivateKey
 import java.security.spec.PKCS8EncodedKeySpec
+import java.util.*
 import javax.net.ssl.KeyManagerFactory
+import javax.net.ssl.TrustManagerFactory
+import javax.net.ssl.X509TrustManager
 
 object AnydefX509ManagerEtc {
   private val caFactory = CertificateFactory.getInstance("X.509")
@@ -85,5 +88,20 @@ object AnydefX509ManagerEtc {
       clientKeyStore.setKeyEntry("private-key", getCertPrivateKey(keyCertPathPair.first), password.toCharArray(), arrayOf<Certificate>(clientCert))
       init(clientKeyStore, "".toCharArray())
     }
+  }
+
+  @Throws(IllegalStateException::class)
+  fun getSystemDefaultTrustManager(): X509TrustManager {
+    val tmFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm()).apply {
+      init(null as KeyStore?)
+    }
+    var manager: X509TrustManager? = null
+    tmFactory.trustManagers.forEach {
+      if (it is X509TrustManager) {
+        manager = it
+        return@forEach
+      }
+    }
+    return manager ?: throw IllegalStateException("Unexpected default trust managers: ${Arrays.toString(tmFactory.trustManagers)}")
   }
 }
