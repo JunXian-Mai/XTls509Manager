@@ -21,4 +21,12 @@ object AnydefX509Certs {
     "/Users/maijunxian/IdeaProjects/Paho_Java/certs/openssl/client-key.pem"
       to "/Users/maijunxian/IdeaProjects/Paho_Java/certs/openssl/client.pem"
   )
+
+  val sIgnoreHostIPVeriferList = arrayOf(
+    "127.0.0.1"
+  )
+
+  val sIgnoreHostVeriferList = arrayOf(
+    ""
+  )
 }
