@@ -40,7 +40,7 @@ object AnydefHostnameVerifier : HostnameVerifier {
     val canonicalIpAddress = ipAddress.toCanonicalHost()
     val subjAltNames = getSubjectAltNames(certificate, ALT_IPA_NAME)
     AnydefX509Certs.sIgnoreHostIPVeriferList.forEach {
-      if (subjAltNames.contains(it)) return true
+      if (it.isNotBlank() && subjAltNames.contains(it)) return true
     }
 
     return subjAltNames.any {
@@ -53,7 +53,7 @@ object AnydefHostnameVerifier : HostnameVerifier {
     val hostname = hostname.toLowerCase(Locale.US)
     val subjAltNames = getSubjectAltNames(certificate, ALT_DNS_NAME)
     AnydefX509Certs.sIgnoreHostVeriferList.forEach {
-      if (subjAltNames.contains(it)) return true
+      if (it.isNotBlank() && subjAltNames.contains(it)) return true
     }
 
     return subjAltNames.any {

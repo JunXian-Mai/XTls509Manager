@@ -33,6 +33,7 @@ class EmqxApp {
 
     fun getSSLSocketFactory(mutual: Boolean = false): SSLSocketFactory {
       val trustManager = AnydefX509TrustManager()
+//      val trustManager = TrustAllManager()
       var keyManager: KeyManagerFactory? = null
       if (mutual) {
         keyManager = AnydefX509ManagerEtc.getKeyManagerFactory()
@@ -161,16 +162,13 @@ fun getGMPrivateKey(): PrivateKey {
   return keyFactory.generatePrivate(keySpec) as RSAPrivateKey
 }
 
-class TrustAllManager(cert: X509Certificate? = null) : X509TrustManager {
-  private val issuers: Array<X509Certificate> = if (cert == null) {
-    arrayOf()
-  } else {
-    arrayOf(cert)
-  }
+class TrustAllManager() : X509TrustManager {
+  private val issuers: Array<X509Certificate> = arrayOf()
 
   override fun getAcceptedIssuers(): Array<X509Certificate> {
     return issuers
   }
   override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String?) {}
+
   override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String?) {}
 }

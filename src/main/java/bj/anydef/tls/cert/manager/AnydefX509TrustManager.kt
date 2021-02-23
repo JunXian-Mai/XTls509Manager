@@ -1,5 +1,6 @@
 package bj.anydef.tls.cert.manager
 
+import bj.anydef.tls.cert.etc.AnydefX509Certs
 import bj.anydef.tls.cert.etc.AnydefX509ManagerEtc
 import bj.anydef.tls.cert.manager.reflect.ReflectSunProtocolVersion
 import bj.anydef.tls.cert.manager.reflect.ReflectSunSSLAlgorithmConstraints
@@ -17,6 +18,7 @@ import javax.net.ssl.*
 class AnydefX509TrustManager(
   private val validatorType: String = Validator.TYPE_PKIX,
   private val trustedSelfCerts: Array<X509Certificate> = AnydefX509ManagerEtc.getCaCertificates(),
+  private val trustedHostName: Array<String> = AnydefX509Certs.sIgnoreHostIPVeriferList,
   attachSystemCerts: Boolean = true
 ) : X509ExtendedTrustManager() {
 
@@ -252,18 +254,21 @@ class AnydefX509TrustManager(
     if (!checkClientTrusted) {
       val sniNames = getRequestedServerNames(session)
       val sniHostName = getHostNameInSNI(sniNames)
-      try {
-        checkIdentity(sniHostName, trustedChain[0], algorithm)
-        identifiable = true
-      } catch (ce: CertificateException) {
-        if (sniHostName.equals(peerHost, ignoreCase = true)) {
-          throw ce
+
+      if (!needTrustedHostName(sniHostName)) {
+        try {
+          checkIdentity(sniHostName, trustedChain[0], algorithm)
+          identifiable = true
+        } catch (ce: CertificateException) {
+          if (sniHostName.equals(peerHost, ignoreCase = true)) {
+            throw ce
+          }
+        }
+
+        if (!identifiable) {
+          checkIdentity(peerHost, trustedChain[0], algorithm)
         }
       }
-    }
-
-    if (!identifiable) {
-      checkIdentity(peerHost, trustedChain[0], algorithm)
     }
   }
 
@@ -311,6 +316,17 @@ class AnydefX509TrustManager(
         Found trusted certificate: $rootCert
       """.trimIndent())
     }
+  }
+
+  private fun needTrustedHostName(host: String): Boolean {
+    var v = false
+    trustedHostName.forEach {
+      if (it.isNotBlank() && host.contains(it)) {
+        v = true
+        return@forEach
+      }
+    }
+    return v;
   }
 }
 
