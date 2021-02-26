@@ -39,8 +39,14 @@ object AnydefHostnameVerifier : HostnameVerifier {
   private fun verifyIpAddress(ipAddress: String, certificate: X509Certificate): Boolean {
     val canonicalIpAddress = ipAddress.toCanonicalHost()
     val subjAltNames = getSubjectAltNames(certificate, ALT_IPA_NAME)
-    AnydefX509Certs.sIgnoreHostIPVeriferList.forEach {
+    //忽略目标主机ip
+    AnydefX509Certs.sIgnoreTargetIPVerifierList.forEach {
       if (it.isNotBlank() && subjAltNames.contains(it)) return true
+    }
+
+    //忽略访问地址的ip
+    if (AnydefX509Certs.sIgnoreAccessIPVerifierList.contains(canonicalIpAddress)) {
+      return true
     }
 
     return subjAltNames.any {
@@ -52,8 +58,14 @@ object AnydefHostnameVerifier : HostnameVerifier {
   private fun verifyHostname(hostname: String, certificate: X509Certificate): Boolean {
     val hostname = hostname.toLowerCase(Locale.US)
     val subjAltNames = getSubjectAltNames(certificate, ALT_DNS_NAME)
-    AnydefX509Certs.sIgnoreHostVeriferList.forEach {
+    //忽略目标主机hostname
+    AnydefX509Certs.sIgnoreTargetHostVerifierList.forEach {
       if (it.isNotBlank() && subjAltNames.contains(it)) return true
+    }
+
+    //忽略访问地址的hostname
+    if (AnydefX509Certs.sIgnoreAccessHostVerifierList.contains(hostname)) {
+      return true
     }
 
     return subjAltNames.any {

@@ -18,7 +18,7 @@ import javax.net.ssl.*
 class AnydefX509TrustManager(
   private val validatorType: String = Validator.TYPE_PKIX,
   private val trustedSelfCerts: Array<X509Certificate> = AnydefX509ManagerEtc.getCaCertificates(),
-  private val trustedHostName: Array<String> = AnydefX509Certs.sIgnoreHostIPVeriferList,
+  private val trustedHostName: Array<String> = AnydefX509Certs.sIgnoreHostVerifierList,
   attachSystemCerts: Boolean = true
 ) : X509ExtendedTrustManager() {
 
@@ -79,6 +79,10 @@ class AnydefX509TrustManager(
 
   fun getAcceptedSelfIssuers(): Array<X509Certificate> {
     return trustedSelfCerts
+  }
+
+  fun getTrustedHostName(): Array<String> {
+    return trustedHostName
   }
 
   private fun checkTrustedInit(chain: Array<out X509Certificate>?,
@@ -326,7 +330,7 @@ class AnydefX509TrustManager(
         return@forEach
       }
     }
-    return v;
+    return v
   }
 }
 
