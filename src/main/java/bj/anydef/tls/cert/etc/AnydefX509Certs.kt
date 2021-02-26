@@ -3,10 +3,10 @@ package bj.anydef.tls.cert.etc
 object AnydefX509Certs {
   val sCaCertPaths = arrayOf(
 //    "/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/server.crt", //服务器证书
-    "/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/test-signing-ca.crt", //
+//    "/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/test-signing-ca.crt", //
 //    "/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/test-root-ca.crt", //
 //    "/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/all-ca.crt", //完整的根证
-//    "/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/all-ca-my.crt", //完整的根证
+    "/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/all-ca-my.crt", //完整的根证
 //    "/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/all-ca-bad-root.crt", //
 //    "/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/all-ca-fake-root.crt", //
 //    "/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/server-expired.crt", //
@@ -16,11 +16,13 @@ object AnydefX509Certs {
   )
 
   val sServerCertPaths = arrayOf(
-    "/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/server.crt"
+//    "/Users/maijunxian/IdeaProjects/Paho_Java/certs/openssl/server.pem",
+    "/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/server.crt",
   )
 
   val sClientCertPaths = arrayOf(
-    "/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/clientmy.crt"
+//    "/Users/maijunxian/IdeaProjects/Paho_Java/certs/openssl/client.pem",
+    "/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/clientmy.crt",
   )
 
   val sClientKeyPaths = arrayOf(
