@@ -3,6 +3,7 @@ package app
 import app.EmqxApp.Companion.gmCaPath
 import app.EmqxApp.Companion.gmClientKeyPath
 import bj.anydef.tls.cert.etc.AnydefX509ManagerEtc
+import bj.anydef.tls.cert.manager.AnydefHostnameVerifier
 import bj.anydef.tls.cert.manager.AnydefX509TrustManager
 import cn.gmssl.jce.provider.GMJCE
 import cn.gmssl.jsse.provider.GMJSSE
@@ -14,7 +15,6 @@ import java.io.BufferedReader
 import java.io.FileInputStream
 import java.io.InputStreamReader
 import java.security.*
-import java.security.cert.Certificate
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
 import java.security.interfaces.RSAPrivateKey
@@ -31,11 +31,17 @@ class EmqxApp {
     val gmClientPath = "/Users/maijunxian/IdeaProjects/Paho_Java/certs/gmssl/client.pem"
     val gmClientKeyPath = "/Users/maijunxian/IdeaProjects/Paho_Java/certs/gmssl/client-key.pem"
 
+    /**
+     * mutual
+     *   false 单向验证
+     *   true 双向验证
+     */
     fun getSSLSocketFactory(mutual: Boolean = false): SSLSocketFactory {
-      val trustManager = AnydefX509TrustManager()
-//      val trustManager = TrustAllManager()
+      val trustManager = AnydefX509TrustManager()  //自定义证书信任器
+//      val trustManager = TrustAllManager()  //不验证证书
       var keyManager: KeyManagerFactory? = null
       if (mutual) {
+        //客户端密钥
         keyManager = AnydefX509ManagerEtc.getKeyManagerFactory()
       }
 
@@ -50,11 +56,12 @@ class EmqxApp {
       val pubTopic = "testtopic/1"
       val content = "Hello World"
       val qos = 2
-      val broker = "ssl://localhost:8883"
+      val broker = "ssl://127.0.0.1:8883"
       val clientId = "java_emqx_test"
       val persistence = MemoryPersistence()
 
       try {
+        //建立客户端
         val client = MqttClient(broker, clientId, persistence)
 
         //连接选项
@@ -63,11 +70,11 @@ class EmqxApp {
         connOpts.password = "java_emqx_test".toCharArray()
         //会话保留
         connOpts.isCleanSession = true
+        //设置证书验证
         connOpts.socketFactory = getSSLSocketFactory(true)
-
+        connOpts.sslHostnameVerifier = AnydefHostnameVerifier
         //设置回调
         client.setCallback(pushCallBack)
-
         //建立连接
         println("Connecting to broker: $broker")
         client.connect(connOpts)
@@ -82,6 +89,7 @@ class EmqxApp {
 
         val message = MqttMessage(content.toByteArray())
         message.qos = qos
+        //发布订阅
         client.publish(pubTopic, message)
         println("Message published")
 

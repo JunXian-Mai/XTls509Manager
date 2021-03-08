@@ -13,6 +13,7 @@ object AnydefX509Certs {
 //    "/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/test-bad-root-ca.crt", //
 //    "/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/test-fake-root-ca.crt", //
 //    "/Users/maijunxian/IdeaProjects/Paho_Java/certs/openssl/rootCA.pem", //另一个自签根证
+//  "",
   )
 
   val sServerCertPaths = arrayOf(
@@ -30,6 +31,8 @@ object AnydefX509Certs {
   )
 
   val sClientKeyCertPathPairs = arrayOf(
+//    "/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/client-key.pem"
+//      to "/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/client.crt",
     "/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/client-key.pem"
       to "/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/clientmy.crt",
 //    "/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/client-key.pem"

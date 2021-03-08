@@ -17,7 +17,7 @@ class ApacheHttp {
     fun doGet() {
       val url = "https://localhost:8443/"
       val httpClient = HttpClientBuilder.create()
-        .setSSLContext(getSSlContext(false))
+        .setSSLContext(getSSlContext(true))
         .setSSLHostnameVerifier(AnydefHostnameVerifier)
         .build()
       val httpGet = HttpGet(url)

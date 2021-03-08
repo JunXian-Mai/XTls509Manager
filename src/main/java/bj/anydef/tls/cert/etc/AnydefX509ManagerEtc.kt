@@ -86,7 +86,7 @@ object AnydefX509ManagerEtc {
       clientKeyStore.load(null, null)
       clientKeyStore.setCertificateEntry("certificate", clientCert)
       clientKeyStore.setKeyEntry("private-key", getCertPrivateKey(keyCertPathPair.first), password.toCharArray(), arrayOf<Certificate>(clientCert))
-      init(clientKeyStore, "".toCharArray())
+      init(clientKeyStore, password.toCharArray())
     }
   }
 
