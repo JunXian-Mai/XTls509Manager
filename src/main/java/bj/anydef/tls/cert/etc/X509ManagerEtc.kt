@@ -16,7 +16,7 @@ import javax.net.ssl.KeyManagerFactory
 import javax.net.ssl.TrustManagerFactory
 import javax.net.ssl.X509TrustManager
 
-object AnydefX509ManagerEtc {
+object X509ManagerEtc {
 
   private val caFactory = CertificateFactory.getInstance("X.509")
 
@@ -44,7 +44,7 @@ object AnydefX509ManagerEtc {
    * @param caCertPath 信任的证书路径列表
    * @return 指定路径下的证书列表
    */
-  fun getCaCertificates(caCertPath: Array<String> = AnydefX509Certs.sCaCertPaths): Array<X509Certificate> {
+  fun getCaCertificates(caCertPath: Array<String> = X509CertSet.sCaCertPaths): Array<X509Certificate> {
     return caCertPath.map { path ->
       FileInputStream(path).use {
         caFactory.generateCertificate(it) as X509Certificate
@@ -82,7 +82,7 @@ object AnydefX509ManagerEtc {
    * @return 密钥管理器
    */
   fun getKeyManagerFactory(
-    keyCertPathPair: AnydefX509Certs.ClientKeyPem = AnydefX509Certs.sClientKeyCertPathPairs[0],
+    keyCertPathPair: X509CertSet.ClientKeyPem = X509CertSet.sClientKeyCertPathPairs[0],
     password: String = ""
   ): KeyManagerFactory {
     return KeyManagerFactory.getInstance("PKIX").apply {

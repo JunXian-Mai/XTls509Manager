@@ -1,8 +1,8 @@
 package app
 
-import bj.anydef.tls.cert.etc.AnydefX509ManagerEtc
-import bj.anydef.tls.cert.manager.AnydefHostnameVerifier
-import bj.anydef.tls.cert.manager.AnydefX509TrustManager
+import bj.anydef.tls.cert.etc.X509ManagerEtc
+import bj.anydef.tls.cert.manager.HostnameVerifier
+import bj.anydef.tls.cert.manager.X509TrustManager
 import org.apache.http.client.methods.HttpGet
 import org.apache.http.impl.client.HttpClientBuilder
 import java.security.SecureRandom
@@ -18,25 +18,26 @@ class ApacheHttp {
     }
 
     fun doGet() {
-      val url = "https://www.baidu.com/"
+      val url = "https://127.0.0.1:8443/"
       val httpClient = HttpClientBuilder.create()
         .setSSLContext(getSSlContext(true))
-        .setSSLHostnameVerifier(AnydefHostnameVerifier)
+        .setSSLHostnameVerifier(HostnameVerifier)
         .build()
       val httpGet = HttpGet(url)
       val response = httpClient.execute(httpGet)
       println(
         """
           statusLine: ${response.statusLine}
-        """.trimIndent())
+        """.trimIndent()
+      )
     }
 
     fun getSSlContext(mutual: Boolean = true): SSLContext {
-      val trustManager = AnydefX509TrustManager()
+      val trustManager = X509TrustManager()
 //      val trustManager = TrustAllManager()
       var keyManager: KeyManagerFactory? = null
       if (mutual) {
-        keyManager = AnydefX509ManagerEtc.getKeyManagerFactory()
+        keyManager = X509ManagerEtc.getKeyManagerFactory()
       }
 
       val context = SSLContext.getInstance("TLSv1.2")

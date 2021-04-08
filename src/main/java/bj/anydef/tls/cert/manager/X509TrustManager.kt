@@ -1,6 +1,6 @@
 package bj.anydef.tls.cert.manager
 
-import bj.anydef.tls.cert.etc.AnydefX509ManagerEtc
+import bj.anydef.tls.cert.etc.X509ManagerEtc
 import java.net.Socket
 import java.security.cert.CertificateException
 import java.security.cert.X509Certificate
@@ -10,8 +10,8 @@ import javax.net.ssl.*
  * @param trustedSelfCerts 自定义信任证书列表
  * @param attachSystemCerts 是否添加系统默认证书
  */
-class AnydefX509TrustManager(
-  private val trustedSelfCerts: Array<X509Certificate> = AnydefX509ManagerEtc.getCaCertificates(),
+class X509TrustManager(
+  private val trustedSelfCerts: Array<X509Certificate> = X509ManagerEtc.getCaCertificates(),
   private val attachSystemCerts: Boolean = true
 ) : X509ExtendedTrustManager() {
 
@@ -19,14 +19,14 @@ class AnydefX509TrustManager(
   private val outputCertDetail = false
 
   // 系统默认证书信任管理器
-  private val systemTrustManager = AnydefX509ManagerEtc.getSystemDefaultTrustManager();
+  private val systemTrustManager = X509ManagerEtc.getSystemDefaultTrustManager();
 
   // 信任证书列表
   private val trustedCerts: Array<X509Certificate>
 
   init {
     if (attachSystemCerts) {
-      trustedCerts = AnydefX509ManagerEtc.getSystemTrustedCerts()
+      trustedCerts = X509ManagerEtc.getSystemTrustedCerts()
         .plus(trustedSelfCerts)
     } else {
       trustedCerts = trustedSelfCerts
@@ -155,7 +155,7 @@ class AnydefX509TrustManager(
     checkClientTrusted: Boolean
   ) {
     // 生成域名校验器
-    val verifier = AnydefHostnameVerifier
+    val verifier = HostnameVerifier
 
     // 获取访问host
     val peerHost = session.peerHost

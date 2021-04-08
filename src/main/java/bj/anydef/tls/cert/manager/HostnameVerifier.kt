@@ -1,6 +1,6 @@
 package bj.anydef.tls.cert.manager
 
-import bj.anydef.tls.cert.etc.AnydefX509Certs
+import bj.anydef.tls.cert.etc.X509CertSet
 import java.security.cert.X509Certificate
 import java.util.*
 import java.util.regex.Pattern
@@ -8,7 +8,7 @@ import javax.net.ssl.HostnameVerifier
 import javax.net.ssl.SSLPeerUnverifiedException
 import javax.net.ssl.SSLSession
 
-object AnydefHostnameVerifier : HostnameVerifier {
+object HostnameVerifier : HostnameVerifier {
   private const val ALT_DNS_NAME = 2
   private const val ALT_IPA_NAME = 7
 
@@ -40,8 +40,8 @@ object AnydefHostnameVerifier : HostnameVerifier {
       // 获取证书主题中 IP地址
       // 将证书主题中 IP地址，过滤列表中 IP地址进行组合
       val allSubjectNames = getSubjectNames(certificate, ALT_IPA_NAME)
-        .plus(AnydefX509Certs.sIgnoreTargetIPVerifierList)
-        .plus(AnydefX509Certs.sIgnoreAccessIPVerifierList)
+        .plus(X509CertSet.sIgnoreTargetIPVerifierList)
+        .plus(X509CertSet.sIgnoreAccessIPVerifierList)
       // 对所有合法的IP地址进行匹配验证
       for (subjectName in allSubjectNames) {
         // 通配符匹配算法
@@ -55,8 +55,8 @@ object AnydefHostnameVerifier : HostnameVerifier {
       // 将证书主题中域名地址，过滤列表中域名地址进行组合
       // 对所有合法的域名地址进行匹配验证
       val allSubjectNames = getSubjectNames(certificate, ALT_DNS_NAME)
-        .plus(AnydefX509Certs.sIgnoreTargetHostVerifierList)
-        .plus(AnydefX509Certs.sIgnoreAccessHostVerifierList)
+        .plus(X509CertSet.sIgnoreTargetHostVerifierList)
+        .plus(X509CertSet.sIgnoreAccessHostVerifierList)
       for (subjectName in allSubjectNames) {
         // 通配符匹配算法
         if (isWildcardsMatch(host, subjectName)) {

@@ -1,8 +1,7 @@
 package app
 
-import bj.anydef.tls.cert.etc.AnydefX509ManagerEtc
-import bj.anydef.tls.cert.manager.AnydefHostnameVerifier
-import bj.anydef.tls.cert.manager.AnydefX509TrustManager
+import bj.anydef.tls.cert.etc.X509ManagerEtc
+import bj.anydef.tls.cert.manager.HostnameVerifier
 import org.eclipse.paho.client.mqttv3.*
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 import java.security.SecureRandom
@@ -10,7 +9,6 @@ import java.security.cert.X509Certificate
 import javax.net.ssl.KeyManagerFactory
 import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLSocketFactory
-import javax.net.ssl.X509TrustManager
 
 
 class EmqxApp {
@@ -24,12 +22,12 @@ class EmqxApp {
      *   true 双向验证
      */
     fun getSSLSocketFactory(mutual: Boolean = false): SSLSocketFactory {
-      val trustManager = AnydefX509TrustManager()  //自定义证书信任器
+      val trustManager = bj.anydef.tls.cert.manager.X509TrustManager()  //自定义证书信任器
 //      val trustManager = TrustAllManager()  //不验证证书
       var keyManager: KeyManagerFactory? = null
       if (mutual) {
         //客户端密钥
-        keyManager = AnydefX509ManagerEtc.getKeyManagerFactory()
+        keyManager = X509ManagerEtc.getKeyManagerFactory()
       }
 
       val context = SSLContext.getInstance("TLSv1.2")
@@ -63,7 +61,7 @@ class EmqxApp {
         connOpts.isCleanSession = true
         //设置证书验证
         connOpts.socketFactory = getSSLSocketFactory(true)
-        connOpts.sslHostnameVerifier = AnydefHostnameVerifier
+        connOpts.sslHostnameVerifier = HostnameVerifier
         //设置回调
         client.setCallback(pushCallBack)
         //建立连接
@@ -125,7 +123,7 @@ class EmqxApp {
   }
 }
 
-class TrustAllManager() : X509TrustManager {
+class TrustAllManager() : javax.net.ssl.X509TrustManager {
   private val issuers: Array<X509Certificate> = arrayOf()
 
   override fun getAcceptedIssuers(): Array<X509Certificate> {

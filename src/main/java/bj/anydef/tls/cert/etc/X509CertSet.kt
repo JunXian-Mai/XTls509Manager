@@ -1,6 +1,6 @@
 package bj.anydef.tls.cert.etc
 
-object AnydefX509Certs {
+object X509CertSet {
   val sCaCertPaths = arrayOf(
 //    "/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/server.crt", //服务器证书
 //    "/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/test-signing-ca.crt", //
