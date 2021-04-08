@@ -1,50 +1,39 @@
 package bj.anydef.tls.cert.manager
 
-import bj.anydef.tls.cert.etc.AnydefX509Certs
 import bj.anydef.tls.cert.etc.AnydefX509ManagerEtc
-import bj.anydef.tls.cert.manager.reflect.ReflectSunProtocolVersion
-import bj.anydef.tls.cert.manager.reflect.ReflectSunSSLAlgorithmConstraints
-import bj.anydef.tls.cert.manager.reflect.ReflectSunTrustStoreManager
-import printlog
-import sun.security.ssl.ProtocolVersion
-import sun.security.util.HostnameChecker
-import sun.security.validator.Validator
 import java.net.Socket
-import java.security.AlgorithmConstraints
 import java.security.cert.CertificateException
 import java.security.cert.X509Certificate
 import javax.net.ssl.*
 
+/**
+ * @param trustedSelfCerts 自定义信任证书列表
+ * @param attachSystemCerts 是否添加系统默认证书
+ */
 class AnydefX509TrustManager(
-  private val validatorType: String = Validator.TYPE_PKIX,
   private val trustedSelfCerts: Array<X509Certificate> = AnydefX509ManagerEtc.getCaCertificates(),
-  private val trustedHostName: Array<String> = AnydefX509Certs.sIgnoreHostVerifierList,
-  attachSystemCerts: Boolean = true
+  private val attachSystemCerts: Boolean = true
 ) : X509ExtendedTrustManager() {
 
-  private val trustStoreManager = ReflectSunTrustStoreManager()
+  // [DEBUG]是否输出证书详细信息
+  private val outputCertDetail = false
 
-  private val protocol = ReflectSunProtocolVersion()
+  // 系统默认证书信任管理器
+  private val systemTrustManager = AnydefX509ManagerEtc.getSystemDefaultTrustManager();
 
-  private val sslAlgorithmConstraints = ReflectSunSSLAlgorithmConstraints()
-
+  // 信任证书列表
   private val trustedCerts: Array<X509Certificate>
 
-  @Volatile
-  private var clientValidator: Validator? = null
-
-  @Volatile
-  private var serverValidator: Validator? = null
-
   init {
-    AnydefX509ManagerEtc.sAttachSystemCert = attachSystemCerts
-    if (AnydefX509ManagerEtc.sAttachSystemCert) {
-      this.trustedCerts = trustStoreManager.getTrustedCerts().plus(trustedSelfCerts)
+    if (attachSystemCerts) {
+      trustedCerts = AnydefX509ManagerEtc.getSystemTrustedCerts()
+        .plus(trustedSelfCerts)
     } else {
-      this.trustedCerts = trustedSelfCerts
+      trustedCerts = trustedSelfCerts
     }
 
-    if (AnydefX509ManagerEtc.sPrintLnCerts) {
+    if (outputCertDetail) {
+      // 输出所有信任的证书
       showTrustedCerts()
     }
   }
@@ -81,138 +70,185 @@ class AnydefX509TrustManager(
     return trustedSelfCerts
   }
 
-  fun getTrustedHostName(): Array<String> {
-    return trustedHostName
-  }
 
-  private fun checkTrustedInit(chain: Array<out X509Certificate>?,
-                               authType: String?, checkClientTrusted: Boolean): Validator {
-    if (chain == null || chain.isEmpty()) {
-      throw java.lang.IllegalArgumentException("null or zero-length certificate chain")
-    }
-
-    if (authType.isNullOrBlank()) {
-      throw java.lang.IllegalArgumentException("null or zero-length authentication type")
-    }
-
-    var v: Validator?
-    if (checkClientTrusted) {
-      v = clientValidator
-      if (v == null) {
-        synchronized(this) {
-          v = clientValidator
-          if (v == null) {
-            v = getValidator(Validator.VAR_TLS_CLIENT)
-            clientValidator = v
-          }
-        }
-      }
-    } else {
-      v = serverValidator
-      if (v == null) {
-        synchronized(this) {
-          v = serverValidator
-          if (v == null) {
-            v = getValidator(Validator.VAR_TLS_SERVER)
-            serverValidator = v
-          }
-        }
-      }
-    }
-    return v!!
-  }
-
+  /**
+   * 证书校验
+   * @param chain 服务器证书链
+   * @param authType 授权类型
+   * @param socket 连接socket
+   * @param checkClientTrusted 服务端否是校验客户端
+   * @throws CertificateException
+   */
   @Throws(CertificateException::class)
-  private fun checkTrusted(chain: Array<out X509Certificate>?,
-                           authType: String?, socket: Socket?,
-                           checkClientTrusted: Boolean) {
-    val v = checkTrustedInit(chain, authType, checkClientTrusted)
+  private fun checkTrusted(
+    chain: Array<out X509Certificate>?,
+    authType: String?, socket: Socket?,
+    checkClientTrusted: Boolean
+  ) {
+    // 校验服务器证书连，类型是否非NULL
+    checkTrustedInit(chain, authType)
 
-    var constraints: AlgorithmConstraints? = null
-    if (socket is SSLSocket && socket.isConnected) {
+    // 判断是否是SSL,并获取SSLSession
+    if (socket is SSLSocket && socket.isConnected()) {
       val session = socket.handshakeSession
-        ?: throw CertificateException("No handshake session")
-
-      val identityAlg = socket.sslParameters.endpointIdentificationAlgorithm
-      if (identityAlg?.isNotBlank() == true) {
-        checkIdentity(session, chain!!, identityAlg, checkClientTrusted)
-      }
-
-      val protocolVersion: ProtocolVersion = protocol.valueOf(session.protocol)
-      if (protocolVersion.v >= protocol.getProtocolVersionInStatic("TLS12").v) {
-        if (session is ExtendedSSLSession) {
-          val localSupportedSignAlgs = session.localSupportedSignatureAlgorithms
-          constraints = sslAlgorithmConstraints.newInstance(
-            socket, localSupportedSignAlgs, false)
-        } else {
-          constraints = sslAlgorithmConstraints.newInstance(socket, withDefaultCertPathConstraints = false)
-        }
-      } else {
-        constraints = sslAlgorithmConstraints.newInstance(socket, withDefaultCertPathConstraints = false)
-      }
+      // 域名校验
+      checkHostname(chain!!, session, checkClientTrusted)
     }
 
-    var trustedChain: Array<out X509Certificate>?
-    trustedChain = if (checkClientTrusted) {
-      validate(v, chain!!, constraints, null)
-    } else {
-      validate(v, chain!!, constraints, authType)
-    }
-    showTrustedRootCerts(trustedChain[trustedChain.size - 1])
+    // 证书校验
+    checkCerts(chain!!, authType!!, checkClientTrusted)
   }
 
+  /**
+   * 证书校验
+   * @param chain 服务器证书链
+   * @param authType 授权类型
+   * @param engine 连接engine
+   * @param checkClientTrusted 服务端否是校验客户端
+   * @throws CertificateException
+   */
   @Throws(CertificateException::class)
-  private fun checkTrusted(chain: Array<out X509Certificate>?,
-                           authType: String?, engine: SSLEngine?,
-                           checkClientTrusted: Boolean) {
-    val v = checkTrustedInit(chain, authType, checkClientTrusted)
+  private fun checkTrusted(
+    chain: Array<out X509Certificate>?,
+    authType: String?, engine: SSLEngine?,
+    checkClientTrusted: Boolean
+  ) {
+    // 校验服务器证书连，类型是否非NULL
+    checkTrustedInit(chain, authType)
 
-    var constraints: AlgorithmConstraints? = null
+    // 判断engine是否非NUll,并获取SSLSession
     if (engine != null) {
-      val session = engine.handshakeSession
-        ?: throw CertificateException("No handshake session")
-
-      val identityAlg = engine.sslParameters.endpointIdentificationAlgorithm
-      if (identityAlg?.isNotBlank() == true) {
-        checkIdentity(session, chain!!, identityAlg, checkClientTrusted)
-      }
-
-      val protocolVersion: ProtocolVersion = protocol.valueOf(session.protocol)
-      if (protocolVersion.v >= protocol.getProtocolVersionInStatic("TLS12").v) {
-        if (session is ExtendedSSLSession) {
-          val localSupportedSignAlgs = session.localSupportedSignatureAlgorithms
-          constraints = sslAlgorithmConstraints.newInstance(
-            engine, localSupportedSignAlgs, false)
-        } else {
-          constraints = sslAlgorithmConstraints.newInstance(engine, withDefaultCertPathConstraints = false)
-        }
-      } else {
-        constraints = sslAlgorithmConstraints.newInstance(engine, withDefaultCertPathConstraints = false)
-      }
+      val session = engine.handshakeSession ?: throw CertificateException("No handshake session")
+      // 域名校验
+      checkHostname(chain!!, session, checkClientTrusted)
     }
 
-    var trustedChain: Array<out X509Certificate>?
-    trustedChain = if (checkClientTrusted) {
-      validate(v, chain!!, constraints, null)
-    } else {
-      validate(v, chain!!, constraints, authType)
-    }
-    showTrustedRootCerts(trustedChain[trustedChain.size - 1])
+    // 证书校验
+    checkCerts(chain!!, authType!!, checkClientTrusted)
   }
 
-  private fun getValidator(variant: String, trustedCerts: Set<X509Certificate> = this.trustedCerts.toMutableSet()): Validator =
-    Validator.getInstance(validatorType, variant, trustedCerts)
+  /**
+   * 服务器相关参数非NULL检查
+   * @param chain 证书链
+   * @param authType 授权类型
+   */
+  @Throws(IllegalArgumentException::class)
+  private fun checkTrustedInit(
+    chain: Array<out X509Certificate>?,
+    authType: String?
+  ) {
+    require(chain?.isNotEmpty() == true) { "null or zero-length certificate chain" }
+    require(authType?.isNotBlank() == true) { "null or zero-length authentication type" }
+  }
 
+  /**
+   * 域名校验
+   * @param chain 证书链
+   * @param session 会话
+   * @param checkClientTrusted 是否校验客户端信任
+   * @throws CertificateException 校验失败，报错
+   */
   @Throws(CertificateException::class)
-  private fun validate(v: Validator,
-                       chain: Array<out X509Certificate>, constraints: AlgorithmConstraints?,
-                       authType: String?): Array<X509Certificate> {
-    return v.validate(chain, null, constraints, authType)
+  private fun checkHostname(
+    chain: Array<out X509Certificate>,
+    session: SSLSession,
+    checkClientTrusted: Boolean
+  ) {
+    // 生成域名校验器
+    val verifier = AnydefHostnameVerifier
+
+    // 获取访问host
+    val peerHost = session.peerHost
+    if (!checkClientTrusted) {
+      // 获取访问host
+      val sniNames = getRequestedServerNames(session)
+      // 获取 SNI 域名（同主机多域名，多证书情况）
+      val sniHostName = getHostNameInSNI(sniNames)
+      // 存在 SNI 域名则判断 SNI 域名
+      if (sniHostName?.isNotEmpty() == true) {
+        // 使用域名校验器校验证书[目标证书：直接访问的证书，即chain[0]]
+        if (!verifier.verify(sniHostName, chain[0])) {
+          // 访问host是否匹配证书
+          if (sniHostName == peerHost || !verifier.verify(peerHost!!, chain[0])) {
+            // SNI 与 访问host 都不匹配，直接结束
+            throw CertificateException("No subject alternative names present")
+          }
+        }
+      } else if (peerHost != null) {
+        // 不存在多域名，直接判断host
+        if (!verifier.verify(peerHost, chain[0])) {
+          throw CertificateException("No subject alternative names present")
+        }
+      }
+    }
   }
 
-  private fun getHostNameInSNI(sniNames: List<SNIServerName>): String {
+  /**
+   * 证书校验
+   * @param chain 证书链
+   * @param authType 授权类型
+   * @param checkClientTrusted 是否校验客户端信任
+   * @throws CertificateException 校验失败，报错
+   */
+  @Throws(CertificateException::class)
+  private fun checkCerts(
+    chain: Array<out X509Certificate>,
+    authType: String,
+    checkClientTrusted: Boolean
+  ) {
+    // 是否被自定义证书信任
+    if (verifySelfCertificate(chain)) {
+//      showTrustedRootCerts(chain[chain.length - 1]);
+      return
+    }
+    if (attachSystemCerts) {
+      // 使用系统默认的证书管理器校验证书
+      if (checkClientTrusted) {
+        systemTrustManager.checkClientTrusted(chain, authType)
+      } else {
+        systemTrustManager.checkServerTrusted(chain, authType)
+      }
+    } else {
+      throw CertificateException("no certificate in root path")
+    }
+
+//    showTrustedRootCerts(chain[chain.length - 1]);
+  }
+
+  /**
+   * 校验自定义证书
+   * @param chain 证书链
+   * @return 校验成功
+   */
+  private fun verifySelfCertificate(chain: Array<out X509Certificate>): Boolean {
+    // 循环判断证书链是否存在自定义信任证书
+    for (chainCert in chain) {
+      for (cert in trustedSelfCerts) {
+        try {
+          chainCert.verify(cert.publicKey)
+          // 某一级证书被信任，直接信任整个证书链
+          return true
+        } catch (e: Exception) {
+          // 打印自定义证书校验失败信息
+          println("self certs verify error: " + e.message)
+        }
+      }
+    }
+    // 不被自定义证书信任
+    return false
+  }
+
+  // 获取 SNI
+  private fun getRequestedServerNames(session: SSLSession): List<SNIServerName> {
+    return if (session is ExtendedSSLSession) {
+      session.requestedServerNames
+    } else emptyList()
+  }
+
+  // 获取 SNI 域名
+  private fun getHostNameInSNI(sniNames: List<SNIServerName>?): String? {
     var hostname: SNIHostName? = null
-    sniNames.forEach {
+    sniNames?.forEach {
       if (it.type == StandardConstants.SNI_HOST_NAME) {
         if (it is SNIHostName) {
           hostname = it
@@ -220,117 +256,35 @@ class AnydefX509TrustManager(
           try {
             hostname = SNIHostName(it.encoded)
           } catch (iae: IllegalArgumentException) {
-            printlog("Illegal server name: $it")
+            iae.printStackTrace()
+            println("Illegal server name: $it")
           }
         }
         return@forEach
       }
     }
 
-    return hostname?.asciiName ?: ""
-  }
-
-  fun getRequestedServerNames(socket: Socket?): List<SNIServerName> {
-    return if (socket is SSLSocket && socket.isConnected) {
-      getRequestedServerNames(socket.handshakeSession)
-    } else emptyList()
-  }
-
-  fun getRequestedServerNames(engine: SSLEngine?): List<SNIServerName> {
-    return if (engine != null) {
-      getRequestedServerNames(engine.handshakeSession)
-    } else emptyList()
-  }
-
-  private fun getRequestedServerNames(session: SSLSession?): List<SNIServerName> {
-    return if (session is ExtendedSSLSession) {
-      session.requestedServerNames
-    } else emptyList()
-  }
-
-  @Throws(CertificateException::class)
-  fun checkIdentity(session: SSLSession,
-                    trustedChain: Array<out X509Certificate>,
-                    algorithm: String,
-                    checkClientTrusted: Boolean) {
-    var identifiable = false
-    val peerHost = session.peerHost
-    if (!checkClientTrusted) {
-      val sniNames = getRequestedServerNames(session)
-      val sniHostName = getHostNameInSNI(sniNames)
-
-      if (!needTrustedHostName(sniHostName)) {
-        try {
-          checkIdentity(sniHostName, trustedChain[0], algorithm)
-          identifiable = true
-        } catch (ce: CertificateException) {
-          if (sniHostName.equals(peerHost, ignoreCase = true)) {
-            throw ce
-          }
-        }
-
-        if (!identifiable) {
-          checkIdentity(peerHost, trustedChain[0], algorithm)
-        }
-      }
-    }
-  }
-
-  @Throws(CertificateException::class)
-  fun checkIdentity(hostname: String?,
-                    cert: X509Certificate,
-                    algorithm: String?) {
-    var hn = hostname ?: String()
-    if (algorithm?.isNotBlank() == true) {
-      if (hn.startsWith("[") && hn.endsWith("]")) {
-        hn = hn.substring(1, hn.length - 1)
-      }
-      if (algorithm.equals("HTTPS", ignoreCase = true)) {
-        HostnameChecker.getInstance(HostnameChecker.TYPE_TLS).match(
-          hn, cert)
-      } else if (algorithm.equals("LDAP", ignoreCase = true) ||
-        algorithm.equals("LDAPS", ignoreCase = true)) {
-        HostnameChecker.getInstance(HostnameChecker.TYPE_LDAP).match(
-          hn, cert)
-      } else {
-        throw CertificateException(
-          "Unknown identification algorithm: $algorithm")
-      }
-    }
+    // 转换 SNI 域名
+    return hostname?.asciiName
   }
 
   private fun showTrustedCerts() {
-    if (AnydefX509ManagerEtc.sPrintLnCerts) {
+    if (outputCertDetail) {
       for (cert in trustedCerts) {
-        printlog("""
-          adding as trusted cert:
-            Subject: ${cert.subjectX500Principal}
-            Issuer: ${cert.issuerX500Principal}
-            Algorithm: ${cert.publicKey.algorithm}
-            Serial number: ${cert.serialNumber.toString(16)}
-            Valid from ${cert.notBefore} until ${cert.notAfter}
-        """.trimIndent())
+        println("adding as trusted cert:")
+        println("  Subject: " + cert.subjectX500Principal)
+        println("  Issuer: " + cert.issuerX500Principal)
+        println("  Algorithm: " + cert.publicKey.algorithm)
+        println("  Serial number: " + cert.serialNumber.toString(16))
+        println("  Valid from " + cert.notBefore + " until " + cert.notAfter)
       }
     }
   }
 
   private fun showTrustedRootCerts(rootCert: X509Certificate) {
-    if (AnydefX509ManagerEtc.sPrintLnCerts) {
-      printlog("""
-        Found trusted certificate: $rootCert
-      """.trimIndent())
+    if (outputCertDetail) {
+      println("Found trusted certificate: $rootCert")
     }
-  }
-
-  private fun needTrustedHostName(host: String): Boolean {
-    var v = false
-    trustedHostName.forEach {
-      if (it.isNotBlank() && host.contains(it)) {
-        v = true
-        return@forEach
-      }
-    }
-    return v
   }
 }
 

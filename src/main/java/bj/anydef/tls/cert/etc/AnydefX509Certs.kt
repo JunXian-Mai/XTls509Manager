@@ -16,27 +16,19 @@ object AnydefX509Certs {
 //  "",
   )
 
-  val sServerCertPaths = arrayOf(
-//    "/Users/maijunxian/IdeaProjects/Paho_Java/certs/openssl/server.pem",
-    "/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/server.crt",
-  )
-
-  val sClientCertPaths = arrayOf(
-//    "/Users/maijunxian/IdeaProjects/Paho_Java/certs/openssl/client.pem",
-    "/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/clientmy.crt",
-  )
-
-  val sClientKeyPaths = arrayOf(
-    "/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/client-key.pem"
-  )
-
   val sClientKeyCertPathPairs = arrayOf(
-//    "/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/client-key.pem"
-//      to "/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/client.crt",
-    "/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/client-key.pem"
-      to "/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/clientmy.crt",
-//    "/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/client-key.pem"
-//      to "/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/client-expired.crt",
+//    ClientKeyPem(
+//      "/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/client.crt",
+//      "/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/client-key.pem"
+//    ),
+    ClientKeyPem(
+      "/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/clientmy.crt",
+      "/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/client-key.pem"
+    ),
+//    ClientKeyPem(
+//      "/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/client-expired.crt",
+//      "/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/client-key.pem"
+//    ),
   )
 
   val sIgnoreTargetIPVerifierList = arrayOf(
@@ -55,6 +47,5 @@ object AnydefX509Certs {
     "localhost"
   )
 
-  val sIgnoreHostVerifierList =
-    sIgnoreTargetIPVerifierList.plus(sIgnoreTargetHostVerifierList).plus(sIgnoreAccessIPVerifierList).plus(sIgnoreAccessHostVerifierList)
+  class ClientKeyPem(val cert: String, val key: String)
 }

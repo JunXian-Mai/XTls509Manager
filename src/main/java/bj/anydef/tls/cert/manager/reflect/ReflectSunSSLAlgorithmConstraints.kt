@@ -8,7 +8,8 @@ internal class ReflectSunSSLAlgorithmConstraints {
   fun newInstance(
     socket: SSLSocket,
     supportedAlgorithms: Array<String>? = null,
-    withDefaultCertPathConstraints: Boolean): AlgorithmConstraints {
+    withDefaultCertPathConstraints: Boolean
+  ): AlgorithmConstraints {
 
     val clazz = Class.forName("sun.security.ssl.SSLAlgorithmConstraints")
     val constructor = if (supportedAlgorithms != null) {
@@ -27,7 +28,8 @@ internal class ReflectSunSSLAlgorithmConstraints {
   fun newInstance(
     engine: SSLEngine,
     supportedAlgorithms: Array<String>? = null,
-    withDefaultCertPathConstraints: Boolean): AlgorithmConstraints {
+    withDefaultCertPathConstraints: Boolean
+  ): AlgorithmConstraints {
 
     val clazz = Class.forName("sun.security.ssl.SSLAlgorithmConstraints")
     val constructor = if (supportedAlgorithms != null) {
