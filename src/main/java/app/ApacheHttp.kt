@@ -1,16 +1,18 @@
 package app
 
-import bj.anydef.tls.cert.etc.X509ManagerEtc
-import bj.anydef.tls.cert.manager.HostnameVerifier
-import bj.anydef.tls.cert.manager.X509TrustManager
 import org.apache.http.client.methods.HttpGet
 import org.apache.http.impl.client.HttpClientBuilder
+import org.markensic.xtls.etc.XTls509ManagerEtc
+import org.markensic.xtls.manager.XTls509TrustManager
+import org.markensic.xtls.manager.XTlsHostVerifier
 import java.security.SecureRandom
 import javax.net.ssl.KeyManagerFactory
 import javax.net.ssl.SSLContext
 
 class ApacheHttp {
   companion object {
+
+    val etc = XTls509ManagerEtc(XTls509CertSetImpl)
 
     @JvmStatic
     fun main(args: Array<String>) {
@@ -21,7 +23,7 @@ class ApacheHttp {
       val url = "https://127.0.0.1:8443/"
       val httpClient = HttpClientBuilder.create()
         .setSSLContext(getSSlContext(true))
-        .setSSLHostnameVerifier(HostnameVerifier)
+        .setSSLHostnameVerifier(XTlsHostVerifier(etc))
         .build()
       val httpGet = HttpGet(url)
       val response = httpClient.execute(httpGet)
@@ -33,11 +35,11 @@ class ApacheHttp {
     }
 
     fun getSSlContext(mutual: Boolean = true): SSLContext {
-      val trustManager = X509TrustManager()
+      val trustManager = XTls509TrustManager(etc)
 //      val trustManager = TrustAllManager()
       var keyManager: KeyManagerFactory? = null
       if (mutual) {
-        keyManager = X509ManagerEtc.getKeyManagerFactory()
+        keyManager = etc.getKeyManagerFactory()
       }
 
       val context = SSLContext.getInstance("TLSv1.2")

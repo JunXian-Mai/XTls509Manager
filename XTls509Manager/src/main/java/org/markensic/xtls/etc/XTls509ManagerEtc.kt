@@ -1,6 +1,7 @@
-package bj.anydef.tls.cert.etc
+package org.markensic.xtls.etc
 
 import com.sun.org.apache.xml.internal.security.utils.Base64
+import org.markensic.xtls.impl.XTls509CertSet
 import java.io.BufferedReader
 import java.io.File
 import java.io.FileInputStream
@@ -16,7 +17,7 @@ import javax.net.ssl.KeyManagerFactory
 import javax.net.ssl.TrustManagerFactory
 import javax.net.ssl.X509TrustManager
 
-object X509ManagerEtc {
+class XTls509ManagerEtc(private val certSet: XTls509CertSet) {
 
   private val caFactory = CertificateFactory.getInstance("X.509")
 
@@ -44,7 +45,7 @@ object X509ManagerEtc {
    * @param caCertPath 信任的证书路径列表
    * @return 指定路径下的证书列表
    */
-  fun getCaCertificates(caCertPath: Array<String> = X509CertSet.sCaCertPaths): Array<X509Certificate> {
+  fun getCaCertificates(caCertPath: Array<String> = certSet.getCaCertPaths()): Array<X509Certificate> {
     return caCertPath.map { path ->
       FileInputStream(path).use {
         caFactory.generateCertificate(it) as X509Certificate
@@ -82,7 +83,7 @@ object X509ManagerEtc {
    * @return 密钥管理器
    */
   fun getKeyManagerFactory(
-    keyCertPathPair: X509CertSet.ClientKeyPem = X509CertSet.sClientKeyCertPathPairs[0],
+    keyCertPathPair: XTls509CertSet.ClientKeyPem = certSet.getClientKeyCertPathPairs()[0],
     password: String = ""
   ): KeyManagerFactory {
     return KeyManagerFactory.getInstance("PKIX").apply {
@@ -121,5 +122,21 @@ object X509ManagerEtc {
     }
     return manager
       ?: throw IllegalStateException("Unexpected default trust managers: ${Arrays.toString(tmFactory.trustManagers)}")
+  }
+
+  /**
+   * 获取域名校验IP过滤列表
+   */
+  fun getIgnoreIpList(): Array<String> {
+    return certSet.getIgnoreTargetIPVerifierList()
+      .plus(certSet.getIgnoreAccessIPVerifierList())
+  }
+
+  /**
+   * 获取域名校验Host过滤列表
+   */
+  fun getIgnoreHostList(): Array<String> {
+    return certSet.getIgnoreTargetHostVerifierList()
+      .plus(certSet.getIgnoreAccessHostVerifierList())
   }
 }

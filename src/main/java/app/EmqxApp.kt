@@ -1,11 +1,11 @@
 package app
 
-import bj.anydef.tls.cert.etc.X509ManagerEtc
-import bj.anydef.tls.cert.manager.HostnameVerifier
 import org.eclipse.paho.client.mqttv3.*
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
+import org.markensic.xtls.etc.XTls509ManagerEtc
+import org.markensic.xtls.manager.XTls509TrustManager
+import org.markensic.xtls.manager.XTlsHostVerifier
 import java.security.SecureRandom
-import java.security.cert.X509Certificate
 import javax.net.ssl.KeyManagerFactory
 import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLSocketFactory
@@ -14,6 +14,8 @@ import javax.net.ssl.SSLSocketFactory
 class EmqxApp {
 
   companion object {
+    val etc = XTls509ManagerEtc(XTls509CertSetImpl)
+
     val pushCallBack = PushCallBack()
 
     /**
@@ -22,12 +24,12 @@ class EmqxApp {
      *   true 双向验证
      */
     fun getSSLSocketFactory(mutual: Boolean = false): SSLSocketFactory {
-      val trustManager = bj.anydef.tls.cert.manager.X509TrustManager()  //自定义证书信任器
+      val trustManager = XTls509TrustManager(etc)  //自定义证书信任器
 //      val trustManager = TrustAllManager()  //不验证证书
       var keyManager: KeyManagerFactory? = null
       if (mutual) {
         //客户端密钥
-        keyManager = X509ManagerEtc.getKeyManagerFactory()
+        keyManager = etc.getKeyManagerFactory()
       }
 
       val context = SSLContext.getInstance("TLSv1.2")
@@ -61,7 +63,7 @@ class EmqxApp {
         connOpts.isCleanSession = true
         //设置证书验证
         connOpts.socketFactory = getSSLSocketFactory(true)
-        connOpts.sslHostnameVerifier = HostnameVerifier
+        connOpts.sslHostnameVerifier = XTlsHostVerifier(etc)
         //设置回调
         client.setCallback(pushCallBack)
         //建立连接
@@ -123,14 +125,4 @@ class EmqxApp {
   }
 }
 
-class TrustAllManager() : javax.net.ssl.X509TrustManager {
-  private val issuers: Array<X509Certificate> = arrayOf()
 
-  override fun getAcceptedIssuers(): Array<X509Certificate> {
-    return issuers
-  }
-
-  override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String?) {}
-
-  override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String?) {}
-}
