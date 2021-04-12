@@ -237,7 +237,7 @@ class XTls509TrustManager internal constructor(
   }
 
   // 获取 SNI
-  private fun getRequestedServerNames(session: SSLSession): List<SNIServerName> {
+  private fun getRequestedServerNames(session: SSLSession): List<SNIServerName>? {
     return if (session is ExtendedSSLSession) {
       session.requestedServerNames
     } else emptyList()
