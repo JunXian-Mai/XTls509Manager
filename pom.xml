@@ -91,6 +91,12 @@
       <version>2.9.0</version>
     </dependency>
 
+    <dependency>
+      <groupId>org.markensic</groupId>
+      <artifactId>xtls-manager</artifactId>
+      <version>1.0.0</version>
+    </dependency>
+
   </dependencies>
 
   <build>
