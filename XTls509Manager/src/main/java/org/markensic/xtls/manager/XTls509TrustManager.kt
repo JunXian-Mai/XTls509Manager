@@ -1,6 +1,6 @@
 package org.markensic.xtls.manager
 
-import org.markensic.xtls.etc.XTls509ManagerEtc
+import org.markensic.xtls.etc.XTlsFactory
 import java.net.Socket
 import java.security.cert.CertificateException
 import java.security.cert.X509Certificate
@@ -10,25 +10,24 @@ import javax.net.ssl.*
  * @param trustedSelfCerts 自定义信任证书列表
  * @param attachSystemCerts 是否添加系统默认证书
  */
-class XTls509TrustManager(
-    private val etc: XTls509ManagerEtc,
-    private val verifier: XTlsHostVerifier = XTlsHostVerifier(etc),
-    private val trustedSelfCerts: Array<X509Certificate> = etc.getCaCertificates(),
-    private val attachSystemCerts: Boolean = true
+class XTls509TrustManager internal constructor(
+  private val trustedSelfCerts: Array<X509Certificate>,
+  private val verifier: XTlsHostVerifier,
+  private val attachSystemCerts: Boolean = true
 ) : X509ExtendedTrustManager() {
 
   // [DEBUG]是否输出证书详细信息
   private val outputCertDetail = false
 
   // 系统默认证书信任管理器
-  private val systemTrustManager = etc.getSystemDefaultTrustManager();
+  private val systemTrustManager = XTlsFactory.getSystemDefaultTrustManager();
 
   // 信任证书列表
   private val trustedCerts: Array<X509Certificate>
 
   init {
     if (attachSystemCerts) {
-      trustedCerts = etc.getSystemTrustedCerts()
+      trustedCerts = XTlsFactory.getSystemTrustedCerts()
         .plus(trustedSelfCerts)
     } else {
       trustedCerts = trustedSelfCerts

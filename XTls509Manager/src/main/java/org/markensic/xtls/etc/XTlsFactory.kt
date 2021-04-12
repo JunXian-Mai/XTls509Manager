@@ -2,6 +2,8 @@ package org.markensic.xtls.etc
 
 import com.sun.org.apache.xml.internal.security.utils.Base64
 import org.markensic.xtls.impl.XTls509CertSet
+import org.markensic.xtls.manager.XTls509TrustManager
+import org.markensic.xtls.manager.XTlsHostVerifier
 import java.io.BufferedReader
 import java.io.File
 import java.io.FileInputStream
@@ -17,9 +19,42 @@ import javax.net.ssl.KeyManagerFactory
 import javax.net.ssl.TrustManagerFactory
 import javax.net.ssl.X509TrustManager
 
-class XTls509ManagerEtc(private val certSet: XTls509CertSet) {
+object XTlsFactory {
 
   private val caFactory = CertificateFactory.getInstance("X.509")
+
+  /**
+   * 根据配置的密钥集创建证书管理器
+   *
+   * @param certSet 自定义密钥集
+   * @param attachSystemCerts 是否添加系统证书
+   * @return 证书管理器
+   */
+  fun creatDefaultManager(certSet: XTls509CertSet, attachSystemCerts: Boolean = true) =
+    XTls509TrustManager(
+      getCaCertificates(certSet.getCaCertPaths()),
+      XTlsHostVerifier(certSet),
+      attachSystemCerts
+    )
+
+  /**
+   * 根据配置的密钥集创建证书管理器
+   *
+   * @param trustedSelfCerts 自定义Ca证书集
+   * @param verifier 域名校验器
+   * @param attachSystemCerts 是否添加系统证书
+   * @return 证书管理器
+   */
+  fun creatManager(
+    trustedSelfCerts: Array<X509Certificate>,
+    verifier: XTlsHostVerifier,
+    attachSystemCerts: Boolean = true
+  ) =
+    XTls509TrustManager(
+      trustedSelfCerts,
+      verifier,
+      attachSystemCerts
+    )
 
   /**
    * 获取Java SDK 中默认的证书信任库，信任的根证列表
@@ -45,7 +80,7 @@ class XTls509ManagerEtc(private val certSet: XTls509CertSet) {
    * @param caCertPath 信任的证书路径列表
    * @return 指定路径下的证书列表
    */
-  fun getCaCertificates(caCertPath: Array<String> = certSet.getCaCertPaths()): Array<X509Certificate> {
+  fun getCaCertificates(caCertPath: Array<String>): Array<X509Certificate> {
     return caCertPath.map { path ->
       FileInputStream(path).use {
         caFactory.generateCertificate(it) as X509Certificate
@@ -83,7 +118,7 @@ class XTls509ManagerEtc(private val certSet: XTls509CertSet) {
    * @return 密钥管理器
    */
   fun getKeyManagerFactory(
-    keyCertPathPair: XTls509CertSet.ClientKeyPem = certSet.getClientKeyCertPathPairs()[0],
+    keyCertPathPair: XTls509CertSet.ClientKeyPem,
     password: String = ""
   ): KeyManagerFactory {
     return KeyManagerFactory.getInstance("PKIX").apply {
@@ -122,21 +157,5 @@ class XTls509ManagerEtc(private val certSet: XTls509CertSet) {
     }
     return manager
       ?: throw IllegalStateException("Unexpected default trust managers: ${Arrays.toString(tmFactory.trustManagers)}")
-  }
-
-  /**
-   * 获取域名校验IP过滤列表
-   */
-  fun getIgnoreIpList(): Array<String> {
-    return certSet.getIgnoreTargetIPVerifierList()
-      .plus(certSet.getIgnoreAccessIPVerifierList())
-  }
-
-  /**
-   * 获取域名校验Host过滤列表
-   */
-  fun getIgnoreHostList(): Array<String> {
-    return certSet.getIgnoreTargetHostVerifierList()
-      .plus(certSet.getIgnoreAccessHostVerifierList())
   }
 }

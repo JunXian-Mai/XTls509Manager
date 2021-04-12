@@ -2,8 +2,7 @@ package app
 
 import org.eclipse.paho.client.mqttv3.*
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
-import org.markensic.xtls.etc.XTls509ManagerEtc
-import org.markensic.xtls.manager.XTls509TrustManager
+import org.markensic.xtls.etc.XTlsFactory
 import org.markensic.xtls.manager.XTlsHostVerifier
 import java.security.SecureRandom
 import javax.net.ssl.KeyManagerFactory
@@ -14,7 +13,6 @@ import javax.net.ssl.SSLSocketFactory
 class EmqxApp {
 
   companion object {
-    val etc = XTls509ManagerEtc(XTls509CertSetImpl)
 
     val pushCallBack = PushCallBack()
 
@@ -24,12 +22,14 @@ class EmqxApp {
      *   true 双向验证
      */
     fun getSSLSocketFactory(mutual: Boolean = false): SSLSocketFactory {
-      val trustManager = XTls509TrustManager(etc)  //自定义证书信任器
+      val trustManager = XTlsFactory.creatDefaultManager(XTls509CertSetImpl)  //自定义证书信任器
 //      val trustManager = TrustAllManager()  //不验证证书
       var keyManager: KeyManagerFactory? = null
       if (mutual) {
         //客户端密钥
-        keyManager = etc.getKeyManagerFactory()
+        keyManager = XTlsFactory.getKeyManagerFactory(
+          XTls509CertSetImpl.getClientKeyCertPathPairs()[0]
+        )
       }
 
       val context = SSLContext.getInstance("TLSv1.2")
@@ -63,7 +63,7 @@ class EmqxApp {
         connOpts.isCleanSession = true
         //设置证书验证
         connOpts.socketFactory = getSSLSocketFactory(true)
-        connOpts.sslHostnameVerifier = XTlsHostVerifier(etc)
+        connOpts.sslHostnameVerifier = XTlsHostVerifier(XTls509CertSetImpl)
         //设置回调
         client.setCallback(pushCallBack)
         //建立连接

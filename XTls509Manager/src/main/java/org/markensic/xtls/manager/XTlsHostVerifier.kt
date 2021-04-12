@@ -1,6 +1,6 @@
 package org.markensic.xtls.manager
 
-import org.markensic.xtls.etc.XTls509ManagerEtc
+import org.markensic.xtls.impl.XTls509CertSet
 import java.security.cert.X509Certificate
 import java.util.*
 import java.util.regex.Pattern
@@ -8,7 +8,7 @@ import javax.net.ssl.HostnameVerifier
 import javax.net.ssl.SSLPeerUnverifiedException
 import javax.net.ssl.SSLSession
 
-open class XTlsHostVerifier(private val etc: XTls509ManagerEtc) : HostnameVerifier {
+open class XTlsHostVerifier(private val certSet: XTls509CertSet) : HostnameVerifier {
   private val ALT_DNS_NAME = 2
   private val ALT_IPA_NAME = 7
 
@@ -40,7 +40,7 @@ open class XTlsHostVerifier(private val etc: XTls509ManagerEtc) : HostnameVerifi
       // 获取证书主题中 IP地址
       // 将证书主题中 IP地址，过滤列表中 IP地址进行组合
       val allSubjectNames = getSubjectNames(certificate, ALT_IPA_NAME)
-        .plus(etc.getIgnoreIpList())
+        .plus(getIgnoreIpList())
       // 对所有合法的IP地址进行匹配验证
       for (subjectName in allSubjectNames) {
         // 通配符匹配算法
@@ -54,7 +54,7 @@ open class XTlsHostVerifier(private val etc: XTls509ManagerEtc) : HostnameVerifi
       // 将证书主题中域名地址，过滤列表中域名地址进行组合
       // 对所有合法的域名地址进行匹配验证
       val allSubjectNames = getSubjectNames(certificate, ALT_DNS_NAME)
-        .plus(etc.getIgnoreHostList())
+        .plus(getIgnoreHostList())
       for (subjectName in allSubjectNames) {
         // 通配符匹配算法
         if (isWildcardsMatch(host, subjectName)) {
@@ -147,5 +147,22 @@ open class XTlsHostVerifier(private val etc: XTls509ManagerEtc) : HostnameVerifi
 
     // 此时查看wildcards是否已经检测到最后，如果检测到最后表示匹配成功，否则匹配失败
     return j == wildcards.length
+  }
+
+
+  /**
+   * 获取域名校验IP过滤列表
+   */
+  fun getIgnoreIpList(): Array<String> {
+    return certSet.getIgnoreTargetIPVerifierList()
+      .plus(certSet.getIgnoreAccessIPVerifierList())
+  }
+
+  /**
+   * 获取域名校验Host过滤列表
+   */
+  fun getIgnoreHostList(): Array<String> {
+    return certSet.getIgnoreTargetHostVerifierList()
+      .plus(certSet.getIgnoreAccessHostVerifierList())
   }
 }
