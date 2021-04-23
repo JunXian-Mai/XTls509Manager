@@ -1,6 +1,6 @@
 package org.markensic.xtls.etc
 
-import com.sun.org.apache.xml.internal.security.utils.Base64
+import org.apache.commons.codec.binary.Base64
 import org.markensic.xtls.impl.XTls509CertSet
 import org.markensic.xtls.manager.XTls509TrustManager
 import org.markensic.xtls.manager.XTlsHostVerifier
@@ -105,7 +105,7 @@ object XTlsFactory {
         }
       }
     }
-    val buffer = Base64.decode(builder.toString())
+    val buffer = Base64.decodeBase64(builder.toString())
     val keySpec = PKCS8EncodedKeySpec(buffer)
     val keyFactory = KeyFactory.getInstance("RSA")
     return keyFactory.generatePrivate(keySpec) as RSAPrivateKey
