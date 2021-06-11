@@ -5,9 +5,7 @@ import org.markensic.xtls.manager.XTlsFactoryManager
 import org.markensic.xtls.hostname.XTlsHostVerifier
 import org.markensic.xtls.manager.XTls509TrustManager
 
-class XTlsTrustManagerBuilder(
-  val source: Source,
-  val hostname: XTlsHostVerifier) {
+class XTlsTrustManagerBuilder(val source: Source) {
 
   // 是否添加系统默认信任证书
   private var attach: Boolean = true
@@ -46,10 +44,23 @@ class XTlsTrustManagerBuilder(
     }
   }
 
-  fun build(): XTls509TrustManager {
+  fun build(hostname: XTlsHostVerifier): XTls509TrustManager {
     return when (source) {
-      is Source.PATH -> XTls509TrustManager(XTlsFactoryManager.getCaCertificates(caCertPaths.toTypedArray()), hostname, attach)
-      is Source.CONTENT -> XTls509TrustManager(XTlsFactoryManager.convertCaCertificates(caCertContents.toTypedArray()), hostname, attach)
+      is Source.PATH -> XTls509TrustManager(
+        XTlsFactoryManager.getCaCertificates(caCertPaths.toTypedArray()),
+        hostname,
+        attach
+      )
+      is Source.CONTENT -> XTls509TrustManager(
+        XTlsFactoryManager.convertCaCertificates(caCertContents.toTypedArray()),
+        hostname,
+        attach
+      )
+      else -> XTls509TrustManager(
+        arrayOf(),
+        hostname,
+        attach
+      )
     }
   }
 }

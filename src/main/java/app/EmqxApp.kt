@@ -18,9 +18,7 @@ class EmqxApp {
 
     val hostname = XTlsHostVerifier(XTls509CertSetImpl)
 
-    val trustBuilder = XTlsTrustManagerBuilder(
-      Source.PATH(),
-      hostname)
+    val trustBuilder = XTlsTrustManagerBuilder(Source.PATH())
 
     val keyBuilder = XTlsKeyManagerBuilder(Source.PATH())
 
@@ -35,7 +33,7 @@ class EmqxApp {
       val trustManager = trustBuilder
         .addPath("/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/all-ca-my.crt")
         .attachSystemCerts(true)
-        .build()
+        .build(hostname)
 //      val trustManager = TrustAllManager()  //不验证证书
       var keyManager: KeyManagerFactory? = null
       if (mutual) {

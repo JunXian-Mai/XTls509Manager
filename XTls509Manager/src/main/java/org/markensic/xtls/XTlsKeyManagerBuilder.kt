@@ -41,6 +41,7 @@ class XTlsKeyManagerBuilder(val source: Source) {
     return when (source) {
       is Source.PATH -> XTlsFactoryManager.getKeyManagerFactory(clientCertPath, clientKeyPath, password)
       is Source.CONTENT -> XTlsFactoryManager.convertKeyManagerFactory(clientCertContent, clientKeyContent, password)
+      else -> throw IllegalArgumentException("Type 'NONE' can't build KeyManagerFactory")
     }
   }
 }

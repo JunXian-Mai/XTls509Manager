@@ -14,9 +14,7 @@ class ApacheHttp {
   companion object {
     val hostname = XTlsHostVerifier(XTls509CertSetImpl)
 
-    val trustBuilder = XTlsTrustManagerBuilder(
-      Source.PATH(),
-      hostname)
+    val trustBuilder = XTlsTrustManagerBuilder(Source.PATH())
 
     val keyBuilder = XTlsKeyManagerBuilder(Source.PATH())
 
@@ -44,7 +42,7 @@ class ApacheHttp {
       val trustManager = trustBuilder
         .addPath("/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/all-ca-my.crt")
         .attachSystemCerts(true)
-        .build()
+        .build(hostname)
 //      val trustManager = TrustAllManager()
       var keyManager: KeyManagerFactory? = null
       if (mutual) {

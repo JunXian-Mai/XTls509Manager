@@ -41,7 +41,7 @@ org.markensic.xtls.XTlsKeyManagerBuilder: X509客户端证书密钥构建器
       val trustManager = trustBuilder
         .addPath("/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/all-ca-my.crt")
         .attachSystemCerts(true)
-        .build()
+        .build(hostname)
 //      val trustManager = TrustAllManager()
       var keyManager: KeyManagerFactory? = null
       if (mutual) {
