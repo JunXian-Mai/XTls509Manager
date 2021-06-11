@@ -1,10 +1,6 @@
-package org.markensic.xtls.impl
+package org.markensic.xtls.hostname
 
-interface XTls509CertSet {
-  fun getCaCertPaths(): Array<String>
-
-  fun getClientKeyCertPathPairs(): Array<ClientKeyPem>
-
+interface XTlsHostnameConfig {
   fun getIgnoreTargetIPVerifierList(): Array<String>
 
   fun getIgnoreTargetHostVerifierList(): Array<String>
@@ -12,6 +8,4 @@ interface XTls509CertSet {
   fun getIgnoreAccessIPVerifierList(): Array<String>
 
   fun getIgnoreAccessHostVerifierList(): Array<String>
-
-  class ClientKeyPem(val cert: String, val key: String)
 }

@@ -2,14 +2,23 @@ package app
 
 import org.apache.http.client.methods.HttpGet
 import org.apache.http.impl.client.HttpClientBuilder
-import org.markensic.xtls.etc.XTlsFactory
-import org.markensic.xtls.manager.XTlsHostVerifier
+import org.markensic.xtls.XTlsKeyManagerBuilder
+import org.markensic.xtls.XTlsTrustManagerBuilder
+import org.markensic.xtls.etc.Source
+import org.markensic.xtls.hostname.XTlsHostVerifier
 import java.security.SecureRandom
 import javax.net.ssl.KeyManagerFactory
 import javax.net.ssl.SSLContext
 
 class ApacheHttp {
   companion object {
+    val hostname = XTlsHostVerifier(XTls509CertSetImpl)
+
+    val trustBuilder = XTlsTrustManagerBuilder(
+      Source.PATH(),
+      hostname)
+
+    val keyBuilder = XTlsKeyManagerBuilder(Source.PATH())
 
     @JvmStatic
     fun main(args: Array<String>) {
@@ -20,7 +29,7 @@ class ApacheHttp {
       val url = "https://127.0.0.1:8443/"
       val httpClient = HttpClientBuilder.create()
         .setSSLContext(getSSlContext(true))
-        .setSSLHostnameVerifier(XTlsHostVerifier(XTls509CertSetImpl))
+        .setSSLHostnameVerifier(hostname)
         .build()
       val httpGet = HttpGet(url)
       val response = httpClient.execute(httpGet)
@@ -32,13 +41,18 @@ class ApacheHttp {
     }
 
     fun getSSlContext(mutual: Boolean = true): SSLContext {
-      val trustManager = XTlsFactory.creatDefaultManager(XTls509CertSetImpl)
+      val trustManager = trustBuilder
+        .addPath("/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/all-ca-my.crt")
+        .attachSystemCerts(true)
+        .build()
 //      val trustManager = TrustAllManager()
       var keyManager: KeyManagerFactory? = null
       if (mutual) {
-        keyManager = XTlsFactory.getKeyManagerFactory(
-          XTls509CertSetImpl.getClientKeyCertPathPairs()[0]
-        )
+        keyManager = keyBuilder
+          .addClientKeyPath(
+            "/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/clientmy.crt",
+            "/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/client-key.pem")
+          .build()
       }
 
       val context = SSLContext.getInstance("TLSv1.2")

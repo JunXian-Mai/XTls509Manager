@@ -2,8 +2,10 @@ package app
 
 import org.eclipse.paho.client.mqttv3.*
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
-import org.markensic.xtls.etc.XTlsFactory
-import org.markensic.xtls.manager.XTlsHostVerifier
+import org.markensic.xtls.XTlsKeyManagerBuilder
+import org.markensic.xtls.XTlsTrustManagerBuilder
+import org.markensic.xtls.etc.Source
+import org.markensic.xtls.hostname.XTlsHostVerifier
 import java.security.SecureRandom
 import javax.net.ssl.KeyManagerFactory
 import javax.net.ssl.SSLContext
@@ -14,6 +16,14 @@ class EmqxApp {
 
   companion object {
 
+    val hostname = XTlsHostVerifier(XTls509CertSetImpl)
+
+    val trustBuilder = XTlsTrustManagerBuilder(
+      Source.PATH(),
+      hostname)
+
+    val keyBuilder = XTlsKeyManagerBuilder(Source.PATH())
+
     val pushCallBack = PushCallBack()
 
     /**
@@ -22,14 +32,19 @@ class EmqxApp {
      *   true 双向验证
      */
     fun getSSLSocketFactory(mutual: Boolean = false): SSLSocketFactory {
-      val trustManager = XTlsFactory.creatDefaultManager(XTls509CertSetImpl)  //自定义证书信任器
+      val trustManager = trustBuilder
+        .addPath("/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/all-ca-my.crt")
+        .attachSystemCerts(true)
+        .build()
 //      val trustManager = TrustAllManager()  //不验证证书
       var keyManager: KeyManagerFactory? = null
       if (mutual) {
         //客户端密钥
-        keyManager = XTlsFactory.getKeyManagerFactory(
-          XTls509CertSetImpl.getClientKeyCertPathPairs()[0]
-        )
+        keyManager = keyBuilder
+          .addClientKeyPath(
+            "/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/clientmy.crt",
+            "/Users/maijunxian/IdeaProjects/Paho_Java/certs/testssl/client-key.pem")
+          .build()
       }
 
       val context = SSLContext.getInstance("TLSv1.2")
